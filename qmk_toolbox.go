@@ -3,60 +3,48 @@ package main
 import (
 	"github.com/therecipe/qt/core"
 	"github.com/therecipe/qt/widgets"
-	"strings"
 )
 
-type ToolBox struct {
-	widgets.QMainWindow
-
-	hexLoader *widgets.QGroupBox
-
+type Gui struct {
+	fileInput *widgets.QLineEdit
+	pushButton *widgets.QPushButton
 }
 
-func initToolBox() *ToolBox {
-	var this = new(ToolBox)
+func newWindow(gui *Gui) *widgets.QMainWindow {
+	mainWindow := widgets.NewQMainWindow(nil, 0)
+	mainWindow.SetMinimumSize2(600, 600)
+	mainWindow.SetWindowTitle("QMK Toolbox")
 
-	this.SetWindowTitle(core.QCoreApplication_ApplicationName())
+	widget := widgets.NewQWidget(nil, 0)
+	widget.SetLayout(widgets.NewQVBoxLayout())
 
-	// create a regular widget
-	// give it a QVBoxLayout
-	// and make it the central widget of the window
-	// widget := widgets.NewQWidget(nil, 0)
-	// widget.SetLayout(widgets.NewQVBoxLayout())
-	// this.SetCentralWidget(widget)
+	mainWindow.SetCentralWidget(widget)
 
-	this.hexLoader = createHexGroup()
+	// hexLoaderGrouping component
+	hexWrapper := widgets.NewQGroupBox2("Load", widget)
+	hexVBoxLayout := widgets.NewQVBoxLayout2(hexWrapper)
 
-	return this
-}
+	// hexLoadInput component
+	hexFileInputWidget := widgets.NewQLineEdit2("Load", nil)
 
-func createHexGroup() *widgets.QGroupBox {
+	// hexButton component
 	var fileName []string
-	var widget = new(widgets.QWidget)
-	var groupBox = widgets.NewQGroupBox2("Local File", nil)
-	var gridLayout = widgets.NewQGridLayout2()
-
-	var fileInput = widgets.NewQLabel2(".hex file", widget, core.Qt__Window)
-
-	var button = widgets.NewQPushButton2("Load", widget)
-	button.ConnectClicked(func(bool) {
-		// create a file dialog
-		// restrict it to *.hex
-		// and get file name
-		hexFileSelect := widgets.NewQFileDialog(nil, core.Qt__Dialog)
-		hexFileSelect.SetFileMode(widgets.QFileDialog__ExistingFile)
-		hexFileSelect.GetOpenFileName(button,"Select hex to flash", "", "Hex (*.hex);;;", ".hex", 0)
-		hexFileSelect.SetNameFilter("Hex (*.hex)")
-		fileName = hexFileSelect.SelectedFiles()
-	})
-	button.ConnectReleased(func () {
-		fileInput.SetText(strings.Join(fileName, "/"))
+	hexButtonWidget := widgets.NewQPushButton2("load", nil)
+	hexButtonWidget.SetText("Load")
+	hexButtonWidget.ConnectClicked(func(bool) {
+		hexFileDialogWidget := widgets.NewQFileDialog(nil, core.Qt__Dialog)
+		hexFileDialogWidget.SetFileMode(widgets.QFileDialog__ExistingFile)
+		hexFileDialogWidget.GetOpenFileName(hexButtonWidget,"Select .hex to flash", "$HOME/", "Hex (*.hex);;;", ".hex", 0)
+		hexFileDialogWidget.SetNameFilter("hex (*.hex)")
+		fileName = hexFileDialogWidget.SelectedFiles()
 	})
 
-	gridLayout.AddWidget(fileInput)
-	gridLayout.AddWidget(button)
-	groupBox.SetLayout(gridLayout)
+	// Assign subcomponent to layout
+	hexVBoxLayout.AddWidget(hexFileInputWidget,0, 0)
+	hexVBoxLayout.AddWidget(hexButtonWidget,0 ,0)
 
-	return groupBox
+	widget.Layout().AddWidget(hexWrapper)
+
+	return mainWindow
 
 }

@@ -16,11 +16,9 @@ func main() {
 	core.QCoreApplication_SetApplicationName("QMK ToolBox")
 	core.QCoreApplication_SetApplicationVersion("0.0.1")
 
-	var toolBox = initToolBox()
+	gui := &Gui{}
 
-	mainWindow := widgets.NewQMainWindow(nil, 0)
-	mainWindow.SetMinimumSize2(250, 200)
-	mainWindow.SetCentralWidget(toolBox)
+	mainWindow := newWindow(gui)
 
 	// make the window visible
 	mainWindow.Show()
