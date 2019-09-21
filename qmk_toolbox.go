@@ -16,14 +16,20 @@ func NewWindow() *widgets.QMainWindow {
 
 	mainWindow.SetCentralWidget(widget)
 
+	createHexGroup(widget)
+
+	return mainWindow
+
+}
+
+func createHexGroup(widget *widgets.QWidget) {
+
 	// hexLoaderGrouping component
 	hexWrapper := widgets.NewQGroupBox2("Load", widget)
 	hexLayout := widgets.NewQHBoxLayout2(hexWrapper)
-
 	// hexLoadInput component
 	hexFileInputWidget := widgets.NewQLineEdit2("Load", nil)
 	hexFileInputWidget.SetReadOnly(true)
-
 	// hexButton component
 	//var fileName []string
 	hexButtonWidget := widgets.NewQPushButton2("load", nil)
@@ -32,7 +38,7 @@ func NewWindow() *widgets.QMainWindow {
 		// hexFileDialogWidget
 		hexFileDialogWidget := widgets.NewQFileDialog(nil, core.Qt__Dialog)
 		hexFileDialogWidget.SetFileMode(widgets.QFileDialog__ExistingFile)
-//		hexFileDialogWidget.GetOpenFileName(nil, "Select .hex to flash", "$HOME", "Hex (*.hex);;;", ".hex", 0)
+		//		hexFileDialogWidget.GetOpenFileName(nil, "Select .hex to flash", "$HOME", "Hex (*.hex);;;", ".hex", 0)
 		hexFileDialogWidget.SetNameFilter("Hex (*.hex)")
 		hexFileDialogWidget.ConnectFileSelected(func(file string) {
 			fmt.Println(file)
@@ -40,24 +46,17 @@ func NewWindow() *widgets.QMainWindow {
 		})
 		hexFileDialogWidget.ShowDefault()
 	})
-
 	// mcu selection component
 	var mcuList []string
 	mcuList = []string{"atmega32u4", "at90usb1286", "atmega32u2", "atmega16u2", "atmega328p", "atmega32a"}
-
 	mcuComboBoxWidget := widgets.NewQComboBox(nil)
 	mcuComboBoxWidget.AddItems(mcuList)
 	mcuComboBoxWidget.ConnectCurrentIndexChanged(func(index int) {
 		fmt.Println(index)
 	})
-
 	// Assign sub component to layout
 	hexLayout.AddWidget(hexFileInputWidget, 1, core.Qt__AlignLeft)
 	hexLayout.AddWidget(hexButtonWidget, 1, core.Qt__AlignCenter)
 	hexLayout.AddWidget(mcuComboBoxWidget, 1, core.Qt__AlignRight)
-
 	widget.Layout().AddWidget(hexWrapper)
-
-	return mainWindow
-
 }
