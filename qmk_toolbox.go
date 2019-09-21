@@ -41,9 +41,20 @@ func NewWindow() *widgets.QMainWindow {
 		hexFileDialogWidget.ShowDefault()
 	})
 
+	// mcu selection component
+	var mcuList []string
+	mcuList = []string{"atmega32u4", "at90usb1286", "atmega32u2", "atmega16u2", "atmega328p", "atmega32a"}
+
+	mcuComboBoxWidget := widgets.NewQComboBox(nil)
+	mcuComboBoxWidget.AddItems(mcuList)
+	mcuComboBoxWidget.ConnectCurrentIndexChanged(func(index int) {
+		fmt.Println(index)
+	})
+
 	// Assign sub component to layout
-	hexLayout.AddWidget(hexFileInputWidget, 1, core.Qt__AlignCenter)
+	hexLayout.AddWidget(hexFileInputWidget, 1, core.Qt__AlignLeft)
 	hexLayout.AddWidget(hexButtonWidget, 1, core.Qt__AlignCenter)
+	hexLayout.AddWidget(mcuComboBoxWidget, 1, core.Qt__AlignRight)
 
 	widget.Layout().AddWidget(hexWrapper)
 
