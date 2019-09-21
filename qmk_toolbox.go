@@ -1,9 +1,13 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/therecipe/qt/core"
 	"github.com/therecipe/qt/widgets"
+	"io/ioutil"
+	"log"
+	"net/http"
 )
 
 func NewWindow() *widgets.QMainWindow {
@@ -17,6 +21,7 @@ func NewWindow() *widgets.QMainWindow {
 	mainWindow.SetCentralWidget(widget)
 
 	createHexGroup(widget)
+	createConfigGroup(widget)
 
 	return mainWindow
 
@@ -59,4 +64,64 @@ func createHexGroup(widget *widgets.QWidget) {
 	hexLayout.AddWidget(hexButtonWidget, 1, core.Qt__AlignCenter)
 	hexLayout.AddWidget(mcuComboBoxWidget, 1, core.Qt__AlignRight)
 	widget.Layout().AddWidget(hexWrapper)
+}
+
+func createConfigGroup(widget *widgets.QWidget) {
+	var selectedKeyboard string
+	var selectedKeymap string
+
+	// configLoaderGrouping component
+	configWrapper := widgets.NewQGroupBox2("Keyboard from qmk.fm", widget)
+	configLayout := widgets.NewQHBoxLayout2(configWrapper)
+
+	// configLayout component
+	keyboardList := populateKeyboardList()
+	keyboardSelectionWidget := widgets.NewQComboBox(nil)
+	keyboardSelectionWidget.AddItems(keyboardList)
+	keyboardSelectionWidget.ConnectCurrentTextChanged(func(keyboard string) {
+		fmt.Println(keyboard)
+		selectedKeyboard = keyboard
+	})
+
+	//
+	var keymapList []string
+	keymapList = []string{"keymap1", "keymap2"}
+	keymapSelectionWidget := widgets.NewQComboBox(nil)
+	keymapSelectionWidget.AddItems(keymapList)
+	keymapSelectionWidget.ConnectCurrentTextChanged(func(keymap string) {
+		fmt.Println(keymap)
+		selectedKeymap = keymap
+	})
+
+	// configButton component
+	configButtonWidget := widgets.NewQPushButton2("load", nil)
+	configButtonWidget.SetText("Load")
+	configButtonWidget.ConnectReleased(func() {
+		fmt.Println(fmt.Sprintf("%s%s", selectedKeyboard, selectedKeymap))
+	})
+
+	configLayout.AddWidget(keyboardSelectionWidget, 1, core.Qt__AlignLeft)
+	configLayout.AddWidget(keymapSelectionWidget, 1, core.Qt__AlignCenter)
+	configLayout.AddWidget(configButtonWidget, 1, core.Qt__AlignRight)
+
+	widget.Layout().AddWidget(configWrapper)
+}
+
+func populateKeyboardList() (keyboardList []string) {
+	url := "http://compile.qmk.fm/v1/keyboards"
+
+
+	res, err := http.Get(url)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	body, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	_ = json.Unmarshal([]byte(body), &keyboardList)
+
+	return keyboardList
 }
