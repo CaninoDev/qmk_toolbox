@@ -1,24 +1,22 @@
 package main
 
 import (
-	"github.com/therecipe/qt/core"
 	"os"
+
+	"github.com/therecipe/qt/core"
 	"github.com/therecipe/qt/widgets"
 )
-
-	var qApp *widgets.QApplication
 
 func main() {
 
 	// needs to be called once before you can start using the QWidgets
-	qApp = widgets.NewQApplication(len(os.Args), os.Args)
+	qApp := widgets.NewQApplication(len(os.Args), os.Args)
 	core.QCoreApplication_SetOrganizationName("QMK")
 	core.QCoreApplication_SetApplicationName("QMK ToolBox")
 	core.QCoreApplication_SetApplicationVersion("0.0.1")
+	core.QCoreApplication_SetAttribute(core.Qt__AA_EnableHighDpiScaling, true)
 
-	gui := &Gui{}
-
-	mainWindow := newWindow(gui)
+	mainWindow := NewWindow()
 
 	// make the window visible
 	mainWindow.Show()
