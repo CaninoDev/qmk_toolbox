@@ -1,13 +1,9 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"github.com/therecipe/qt/core"
 	"github.com/therecipe/qt/widgets"
-	"io/ioutil"
-	"log"
-	"net/http"
 )
 
 func NewWindow() *widgets.QMainWindow {
@@ -107,21 +103,16 @@ func createConfigGroup(widget *widgets.QWidget) {
 	widget.Layout().AddWidget(configWrapper)
 }
 
-func populateKeyboardList() (keyboardList []string) {
+func populateKeyboardList() (keyboards []string) {
+	keyboards = struct {List []string}
 	url := "http://compile.qmk.fm/v1/keyboards"
+	GetJson(url, keyboards)
+	return keyboards.List
+}
 
-
-	res, err := http.Get(url)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	body, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	_ = json.Unmarshal([]byte(body), &keyboardList)
-
-	return keyboardList
+func populateKeyMapList(keyboardName string) (keymaps []string) {
+	url := fmt.Sprintf("https://github.com/qmk/qmk_firmware/contents/%s/keymaps", keyboardName)
+	keymaps = struct {Maps []string}
+	GetJson(url, keymaps)
+	return keymaps.List
 }
