@@ -1,12 +1,19 @@
 package main
 
 import (
+	"context"
 	"fmt"
+	"log"
+	"net/http"
+	"time"
+
+	"github.com/google/go-github/github"
 	"github.com/therecipe/qt/core"
 	"github.com/therecipe/qt/widgets"
 )
 
 func NewWindow() *widgets.QMainWindow {
+
 	mainWindow := widgets.NewQMainWindow(nil, 0)
 	mainWindow.SetMinimumSize2(200, 400)
 	mainWindow.SetWindowTitle("QMK Toolbox")
@@ -24,7 +31,6 @@ func NewWindow() *widgets.QMainWindow {
 }
 
 func createHexGroup(widget *widgets.QWidget) {
-
 	// hexLoaderGrouping component
 	hexWrapper := widgets.NewQGroupBox2("Load", widget)
 	hexLayout := widgets.NewQHBoxLayout2(hexWrapper)
@@ -63,6 +69,21 @@ func createHexGroup(widget *widgets.QWidget) {
 }
 
 func createConfigGroup(widget *widgets.QWidget) {
+	var ctx context.Context
+	ctx = context.Background()
+
+	apiClient := http.Client{
+		Timeout: time.Second * 2,
+	}
+
+	gitClient := github.NewClient(&apiClient)
+
+	keyboardList := GetKeyBoardList(apiClient)
+	keyMapList, err := GetKeyMapList(ctx, gitClient, keyboardList[0])
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	var selectedKeyboard string
 	var selectedKeymap string
 
@@ -71,22 +92,24 @@ func createConfigGroup(widget *widgets.QWidget) {
 	configLayout := widgets.NewQHBoxLayout2(configWrapper)
 
 	// configLayout component
-	keyboardList := populateKeyboardList()
 	keyboardSelectionWidget := widgets.NewQComboBox(nil)
+	keymapSelectionWidget := widgets.NewQComboBox(nil)
+
 	keyboardSelectionWidget.AddItems(keyboardList)
 	keyboardSelectionWidget.ConnectCurrentTextChanged(func(keyboard string) {
 		fmt.Println(keyboard)
-		selectedKeyboard = keyboard
+		keyMapList, err = GetKeyMapList(ctx, gitClient, keyboard)
+		if err != nil {
+			log.Fatal(err)
+		}
+		keymapSelectionWidget.Clear()
+		keymapSelectionWidget.AddItems(keyMapList)
+		keymapSelectionWidget.Update()
 	})
 
-	//
-	var keymapList []string
-	keymapList = []string{"keymap1", "keymap2"}
-	keymapSelectionWidget := widgets.NewQComboBox(nil)
-	keymapSelectionWidget.AddItems(keymapList)
+	keymapSelectionWidget.AddItems(keyMapList)
 	keymapSelectionWidget.ConnectCurrentTextChanged(func(keymap string) {
 		fmt.Println(keymap)
-		selectedKeymap = keymap
 	})
 
 	// configButton component
@@ -101,18 +124,4 @@ func createConfigGroup(widget *widgets.QWidget) {
 	configLayout.AddWidget(configButtonWidget, 1, core.Qt__AlignRight)
 
 	widget.Layout().AddWidget(configWrapper)
-}
-
-func populateKeyboardList() (keyboards []string) {
-	keyboards = struct {List []string}
-	url := "http://compile.qmk.fm/v1/keyboards"
-	GetJson(url, keyboards)
-	return keyboards.List
-}
-
-func populateKeyMapList(keyboardName string) (keymaps []string) {
-	url := fmt.Sprintf("https://github.com/qmk/qmk_firmware/contents/%s/keymaps", keyboardName)
-	keymaps = struct {Maps []string}
-	GetJson(url, keymaps)
-	return keymaps.List
 }
