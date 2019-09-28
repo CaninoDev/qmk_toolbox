@@ -1,146 +1,239 @@
 package main
 
 import (
-	"context"
 	"fmt"
-	"github.com/therecipe/qt/gui"
 	"log"
 	"net/http"
 	"time"
 
 	"github.com/google/go-github/github"
 	"github.com/therecipe/qt/core"
+	"github.com/therecipe/qt/gui"
 	"github.com/therecipe/qt/widgets"
 )
 
-func NewWindow() *widgets.QMainWindow {
+type App struct {
+	app *widgets.QApplication
+	window *widgets.QMainWindow
 
-	mainWindow := widgets.NewQMainWindow(nil, 0)
-	mainWindow.SetMinimumSize2(200, 400)
-	mainWindow.SetWindowTitle("QMK Toolbox")
+	hexGroup *widgets.QGroupBox
+	hexFilePath *widgets.QLineEdit
+	hexLoadButton *widgets.QPushButton
+	mcuSelector *widgets.QComboBox
 
-	widget := widgets.NewQWidget(nil, 0)
-	widget.SetLayout(widgets.NewQVBoxLayout())
+	configGroup *widgets.QGroupBox
+	keyboardSelector *widgets.QComboBox
+	keymapSelector *widgets.QComboBox
+	keymapLoadButton *widgets.QPushButton
 
-	mainWindow.SetCentralWidget(widget)
+	flashButton *widgets.QPushButton
+	resetButton *widgets.QPushButton
 
-	createHexGroup(widget)
-	createConfigGroup(widget)
-	createConsoleGroup(widget)
+	console *widgets.QTextEdit
 
-	return mainWindow
+	apiClient *http.Client
+	githubClient github.Client
 
 }
 
-func createHexGroup(widget *widgets.QWidget) {
-	// hexLoaderGrouping component
-	hexWrapper := widgets.NewQGroupBox2("Load", widget)
-	hexLayout := widgets.NewQHBoxLayout2(hexWrapper)
-	// hexLoadInput component
-	hexFileInputWidget := widgets.NewQLineEdit2("Load", nil)
-	hexFileInputWidget.SetReadOnly(true)
-	// hexButton component
-	//var fileName []string
-	hexButtonWidget := widgets.NewQPushButton2("load", nil)
-	hexButtonWidget.SetText("Load")
-	hexButtonWidget.ConnectReleased(func() {
-		// hexFileDialogWidget
-		hexFileDialogWidget := widgets.NewQFileDialog(nil, core.Qt__Dialog)
-		hexFileDialogWidget.SetFileMode(widgets.QFileDialog__ExistingFile)
-		//		hexFileDialogWidget.GetOpenFileName(nil, "Select .hex to flash", "$HOME", "Hex (*.hex);;;", ".hex", 0)
-		hexFileDialogWidget.SetNameFilter("Hex (*.hex)")
-		hexFileDialogWidget.ConnectFileSelected(func(file string) {
-			fmt.Println(file)
-			hexFileInputWidget.SetText(file)
-		})
-		hexFileDialogWidget.ShowDefault()
-	})
-	// mcu selection component
-	var mcuList []string
-	mcuList = []string{"atmega32u4", "at90usb1286", "atmega32u2", "atmega16u2", "atmega328p", "atmega32a"}
-	mcuComboBoxWidget := widgets.NewQComboBox(nil)
-	mcuComboBoxWidget.AddItems(mcuList)
-	mcuComboBoxWidget.ConnectCurrentIndexChanged(func(index int) {
-		fmt.Println(index)
-	})
-	// Assign sub component to layout
-	hexLayout.AddWidget(hexFileInputWidget, 1, core.Qt__AlignLeft)
-	hexLayout.AddWidget(hexButtonWidget, 1, core.Qt__AlignCenter)
-	hexLayout.AddWidget(mcuComboBoxWidget, 1, core.Qt__AlignRight)
-	widget.Layout().AddWidget(hexWrapper)
+func NewApp(qt *widgets.QApplication) *App {
+	app := App{app: qt}
+	return &app
 }
 
-func createConfigGroup(widget *widgets.QWidget) {
-	var ctx context.Context
-	ctx = context.Background()
-
-	apiClient := http.Client{
+func (a *App) Run() {
+	a.apiClient = &http.Client{
 		Timeout: time.Second * 2,
 	}
 
-	gitClient := github.NewClient(&apiClient)
+	a.githubClient = *github.NewClient(a.apiClient)
 
-	keyboardList := GetKeyBoardList(apiClient)
-	keyMapList, err := GetKeyMapList(ctx, gitClient, keyboardList[0])
-	if err != nil {
-		log.Fatal(err)
-	}
+	a.window = widgets.NewQMainWindow(nil, 0)
+	a.window.SetWindowTitle("QMK Toolbox")
 
-	var selectedKeyboard string
-	var selectedKeymap string
+	a.hexGroup = widgets.NewQGroupBox(a.window)
+	a.hexFilePath = widgets.NewQLineEdit(a.hexGroup)
+	a.hexFilePath.SetReadOnly(true)
 
-	// configLoaderGrouping component
-	configWrapper := widgets.NewQGroupBox2("Keyboard from qmk.fm", widget)
-	configLayout := widgets.NewQHBoxLayout2(configWrapper)
+	a.hexLoadButton = widgets.NewQPushButton2("Load .hex file", a.hexGroup)
+	a.hexLoadButton.ConnectClicked(a.onHexLoadButtonClicked)
 
-	// configLayout component
-	keyboardSelectionWidget := widgets.NewQComboBox(nil)
-	keymapSelectionWidget := widgets.NewQComboBox(nil)
+	a.mcuSelector = widgets.NewQComboBox(a.hexGroup)
 
-	keyboardSelectionWidget.AddItems(keyboardList)
-	keyboardSelectionWidget.ConnectCurrentTextChanged(func(keyboard string) {
-		keyMapList, err = GetKeyMapList(ctx, gitClient, keyboard)
-		if err != nil {
-			log.Fatal(err)
-		}
-		keymapSelectionWidget.Clear()
-		keymapSelectionWidget.AddItems(keyMapList)
-		keymapSelectionWidget.Update()
-	})
+	a.configGroup = widgets.NewQGroupBox(a.window)
+	a.keyboardSelector = widgets.NewQComboBox(a.configGroup)
+	a.keyboardSelector.ConnectCurrentTextChanged(a.populateKeyMapSelector)
+	a.populateKeyboardSelector()
 
-	keymapSelectionWidget.AddItems(keyMapList)
-	keymapSelectionWidget.ConnectCurrentTextChanged(func(keymap string) {
-		fmt.Println(keymap)
-	})
+	a.keymapSelector = widgets.NewQComboBox(a.configGroup)
 
-	// configButton component
-	configButtonWidget := widgets.NewQPushButton2("load", nil)
-	configButtonWidget.SetText("Load")
-	configButtonWidget.ConnectReleased(func() {
-		selectedKeyboard = keyboardSelectionWidget.CurrentText()
-		selectedKeymap = keymapSelectionWidget.CurrentText()
-		log.Printf("%s/%s", selectedKeyboard, selectedKeymap)
-		widget.
-	})
+	a.keymapLoadButton = widgets.NewQPushButton(a.configGroup)
+	a.keymapLoadButton.ConnectClicked(a.onKeyMapLoadButtonClicked)
 
-	configLayout.AddWidget(keyboardSelectionWidget, 1, core.Qt__AlignLeft)
-	configLayout.AddWidget(keymapSelectionWidget, 1, core.Qt__AlignCenter)
-	configLayout.AddWidget(configButtonWidget, 1, core.Qt__AlignRight)
+	a.console = widgets.NewQTextEdit(a.window)
+	a.console.SetReadOnly(true)
 
-	widget.Layout().AddWidget(configWrapper)
-}
+	a.flashButton = widgets.NewQPushButton2("Flash", a.window)
+	a.flashButton.ConnectClicked(a.onFlashButtonClicked)
 
-func createConsoleGroup(widget *widgets.QWidget) {
+	a.resetButton = widgets.NewQPushButton2("Reset", a.window)
+	a.resetButton.ConnectClicked(a.onResetButtonClicked)
+
+	hexLayout := widgets.NewQGridLayout2()
+	hexLayout.AddWidget3(a.hexFilePath, 0, 0,  1, 1, core.Qt__AlignCenter)
+	hexLayout.AddWidget3(a.hexLoadButton, 0,1, 1, 1, core.Qt__AlignCenter)
+	hexLayout.AddWidget3(a.mcuSelector, 0, 2, 1, 1, core.Qt__AlignCenter)
+	a.hexGroup.SetLayout(hexLayout)
+
+	configLayout := widgets.NewQGridLayout2()
+	configLayout.AddWidget3(a.keyboardSelector, 0, 0, 1, 1, core.Qt__AlignCenter)
+	configLayout.AddWidget3(a.keymapSelector, 0, 1, 1, 1, core.Qt__AlignCenter)
+	configLayout.AddWidget3(a.keymapLoadButton, 0, 	2, 1,1, core.Qt__AlignCenter)
+	a.configGroup.SetLayout(configLayout)
+
+	a.console = widgets.NewQTextEdit(a.window)
+	a.console.SetReadOnly(true)
 	textFont := gui.NewQFont2("monospace", -1, -1, false)
+	a.console.SetFont(textFont)
 
-	consoleWrapper := widgets.NewQGroupBox2("Console", widget)
-	consoleLayout := widgets.NewQGridLayout(consoleWrapper)
-
-	consoleWidget := widgets.NewQTextEdit(widget)
-	consoleWidget.SetReadOnly(true)
-	consoleWidget.SetFont(textFont)
-
-	consoleLayout.AddWidget(consoleWidget)
-
-	widget.Layout().AddWidget(consoleWrapper)
+	masterLayout := widgets.NewQGridLayout(a.window)
+	masterLayout.AddWidget3(a.hexGroup, 0, 0, 1, 1, core.Qt__AlignCenter)
+	masterLayout.AddWidget3(a.configGroup, )
 }
+
+func (a *App) onHexLoadButtonClicked(checked bool) {
+	hexFileDialog := widgets.NewQFileDialog(nil, core.Qt__Dialog)
+	hexFileDialog.SetFileMode(widgets.QFileDialog__ExistingFile)
+	hexFileDialog.SetNameFilter("Hex (*.hex)")
+	hexFileDialog.ConnectFileSelected(func(file string) {
+		fmt.Println(file)
+		a.hexFilePath.SetText(file)
+	})
+	hexFileDialog.ShowDefault()
+}
+
+func (a *App) populateKeyboardSelector() {
+	keyboardList := GetKeyBoardList(a.apiClient)
+	a.keyboardSelector.AddItems(keyboardList)
+}
+
+func (a *App) populateKeyMapSelector(keyboard string) {
+	keymapList := GetKeyMapList(&a.githubClient, keyboard)
+	a.keymapSelector.Clear()
+	a.keymapSelector.AddItems(keymapList)
+}
+
+
+func (a *App) onKeyMapLoadButtonClicked(checked bool) {
+	log.Print("button clicked")
+}
+func (a *App) onFlashButtonClicked(checked bool) {
+	log.Print("button clicked")
+}
+func (a *App) onResetButtonClicked(checked bool) {
+	log.Print("button clicked")
+}
+
+//
+//func createHexGroup(widget *widgets.QWidget) {
+//	// hexLoaderGrouping component
+//	hexWrapper := widgets.NewQGroupBox2("Load", widget)
+//	hexLayout := widgets.NewQHBoxLayout2(hexWrapper)
+//	// hexLoadInput component
+//	hexFileInputWidget := widgets.NewQLineEdit2("Load", nil)
+//	hexFileInputWidget.SetReadOnly(true)
+//	// hexButton component
+//	//var fileName []string
+//	hexButtonWidget := widgets.NewQPushButton2("load", nil)
+//	hexButtonWidget.SetText("Load")
+//	hexButtonWidget.ConnectReleased(func() {
+//	})
+//	// mcu selection component
+//	var mcuList []string
+//	mcuList = []string{"atmega32u4", "at90usb1286", "atmega32u2", "atmega16u2", "atmega328p", "atmega32a"}
+//	mcuComboBoxWidget := widgets.NewQComboBox(nil)
+//	mcuComboBoxWidget.AddItems(mcuList)
+//	mcuComboBoxWidget.ConnectCurrentIndexChanged(func(index int) {
+//		fmt.Println(index)
+//	})
+//	// Assign sub component to layout
+//	hexLayout.AddWidget(hexFileInputWidget, 1, core.Qt__AlignLeft)
+//	hexLayout.AddWidget(hexButtonWidget, 1, core.Qt__AlignCenter)
+//	hexLayout.AddWidget(mcuComboBoxWidget, 1, core.Qt__AlignRight)
+//	widget.Layout().AddWidget(hexWrapper)
+//}
+//
+//func createConfigGroup(widget *widgets.QWidget) {
+//	var ctx context.Context
+//	ctx = context.Background()
+//
+//	apiClient := http.Client{
+//		Timeout: time.Second * 2,
+//	}
+//
+//	gitClient := github.NewClient(&apiClient)
+//
+//	keyboardList := GetKeyBoardList(apiClient)
+//	keyMapList, err := GetKeyMapList(ctx, gitClient, keyboardList[0])
+//	if err != nil {
+//		log.Fatal(err)
+//	}
+//
+//	var selectedKeyboard string
+//	var selectedKeymap string
+//
+//	// configLoaderGrouping component
+//	configWrapper := widgets.NewQGroupBox2("Keyboard from qmk.fm", widget)
+//	configLayout := widgets.NewQHBoxLayout2(configWrapper)
+//
+//	// configLayout component
+//	keyboardSelectionWidget := widgets.NewQComboBox(nil)
+//	keymapSelectionWidget := widgets.NewQComboBox(nil)
+//
+//	keyboardSelectionWidget.AddItems(keyboardList)
+//	keyboardSelectionWidget.ConnectCurrentTextChanged(func(keyboard string) {
+//		keyMapList, err = GetKeyMapList(ctx, gitClient, keyboard)
+//		if err != nil {
+//			log.Fatal(err)
+//		}
+//		keymapSelectionWidget.Clear()
+//		keymapSelectionWidget.AddItems(keyMapList)
+//		keymapSelectionWidget.Update()
+//	})
+//
+//	keymapSelectionWidget.AddItems(keyMapList)
+//	keymapSelectionWidget.ConnectCurrentTextChanged(func(keymap string) {
+//		fmt.Println(keymap)
+//	})
+//
+//	// configButton component
+//	configButtonWidget := widgets.NewQPushButton2("load", nil)
+//	configButtonWidget.SetText("Load")
+//	configButtonWidget.ConnectReleased(func() {
+//		selectedKeyboard = keyboardSelectionWidget.CurrentText()
+//		selectedKeymap = keymapSelectionWidget.CurrentText()
+//		log.Printf("%s/%s", selectedKeyboard, selectedKeymap)
+//		widget.
+//	})
+//
+//	configLayout.AddWidget(keyboardSelectionWidget, 1, core.Qt__AlignLeft)
+//	configLayout.AddWidget(keymapSelectionWidget, 1, core.Qt__AlignCenter)
+//	configLayout.AddWidget(configButtonWidget, 1, core.Qt__AlignRight)
+//
+//	widget.Layout().AddWidget(configWrapper)
+//}
+//
+//func createConsoleGroup(widget *widgets.QWidget) {
+//	textFont := gui.NewQFont2("monospace", -1, -1, false)
+//
+//	consoleWrapper := widgets.NewQGroupBox2("Console", widget)
+//	consoleLayout := widgets.NewQGridLayout(consoleWrapper)
+//
+//	consoleWidget := widgets.NewQTextEdit(widget)
+//	consoleWidget.SetReadOnly(true)
+//	consoleWidget.SetFont(textFont)
+//
+//	consoleLayout.AddWidget(consoleWidget)
+//
+//	widget.Layout().AddWidget(consoleWrapper)
+//}

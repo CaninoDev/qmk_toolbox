@@ -13,7 +13,7 @@ import (
 	"github.com/google/go-github/github"
 )
 
-func GetKeyBoardList(client http.Client) []string {
+func GetKeyBoardList(client *http.Client) []string {
 	url := "http://compile.qmk.fm/v1/keyboards"
 	var rawJSON json.RawMessage
 	var keyboardList []string
@@ -39,7 +39,8 @@ func GetKeyBoardList(client http.Client) []string {
 	return keyboardList
 }
 
-func GetKeyMapList(ctx context.Context, client *github.Client, kbPath string) (keyMapList []string, err error) {
+func GetKeyMapList(client *github.Client, kbPath string) (keyMapList []string) {
+	ctx := context.Background()
 	owner := "qmk"
 	repo := "qmk_firmware"
 
@@ -69,5 +70,5 @@ func GetKeyMapList(ctx context.Context, client *github.Client, kbPath string) (k
 			}
 		}
 	}
-	return keyMapList, nil
+	return keyMapList
 }
