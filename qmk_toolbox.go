@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"github.com/therecipe/qt/gui"
 	"log"
 	"net/http"
 	"time"
@@ -25,6 +26,7 @@ func NewWindow() *widgets.QMainWindow {
 
 	createHexGroup(widget)
 	createConfigGroup(widget)
+	createConsoleGroup(widget)
 
 	return mainWindow
 
@@ -97,7 +99,6 @@ func createConfigGroup(widget *widgets.QWidget) {
 
 	keyboardSelectionWidget.AddItems(keyboardList)
 	keyboardSelectionWidget.ConnectCurrentTextChanged(func(keyboard string) {
-		fmt.Println(keyboard)
 		keyMapList, err = GetKeyMapList(ctx, gitClient, keyboard)
 		if err != nil {
 			log.Fatal(err)
@@ -116,7 +117,10 @@ func createConfigGroup(widget *widgets.QWidget) {
 	configButtonWidget := widgets.NewQPushButton2("load", nil)
 	configButtonWidget.SetText("Load")
 	configButtonWidget.ConnectReleased(func() {
-		fmt.Println(fmt.Sprintf("%s%s", selectedKeyboard, selectedKeymap))
+		selectedKeyboard = keyboardSelectionWidget.CurrentText()
+		selectedKeymap = keymapSelectionWidget.CurrentText()
+		log.Printf("%s/%s", selectedKeyboard, selectedKeymap)
+		widget.
 	})
 
 	configLayout.AddWidget(keyboardSelectionWidget, 1, core.Qt__AlignLeft)
@@ -124,4 +128,19 @@ func createConfigGroup(widget *widgets.QWidget) {
 	configLayout.AddWidget(configButtonWidget, 1, core.Qt__AlignRight)
 
 	widget.Layout().AddWidget(configWrapper)
+}
+
+func createConsoleGroup(widget *widgets.QWidget) {
+	textFont := gui.NewQFont2("monospace", -1, -1, false)
+
+	consoleWrapper := widgets.NewQGroupBox2("Console", widget)
+	consoleLayout := widgets.NewQGridLayout(consoleWrapper)
+
+	consoleWidget := widgets.NewQTextEdit(widget)
+	consoleWidget.SetReadOnly(true)
+	consoleWidget.SetFont(textFont)
+
+	consoleLayout.AddWidget(consoleWidget)
+
+	widget.Layout().AddWidget(consoleWrapper)
 }
