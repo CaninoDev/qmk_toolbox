@@ -29,7 +29,7 @@ type App struct {
 	flashButton *widgets.QPushButton
 	resetButton *widgets.QPushButton
 
-	console *widgets.QPlainTextEdit
+	console *widgets.QTextEdit
 
 	apiClient *http.Client
 	githubClient github.Client
@@ -68,19 +68,21 @@ func (a *App) Run() {
 	a.keymapLoadButton = widgets.NewQPushButton2("Load...", nil)
 	a.keymapLoadButton.ConnectClicked(a.onKeyMapLoadButtonClicked)
 
-	a.console = widgets.NewQPlainTextEdit(nil)
+	a.console = widgets.NewQTextEdit2("console", nil)
 	a.console.SetReadOnly(true)
+	a.console.SetReadOnly(true)
+	textFont := gui.NewQFont2("monospace", -1, -1, false)
+	a.console.SetFont(textFont)
+	colorPalette := gui.NewQPalette()
+	colorPalette.SetColor(gui.QPalette__All, gui.QPalette__Base, gui.NewQColor6("black"))
+	colorPalette.SetColor(gui.QPalette__All, gui.QPalette__Text, gui.NewQColor6("white"))
+	a.console.SetPalette(colorPalette)
 
 	a.flashButton = widgets.NewQPushButton2("Flash", nil)
 	a.flashButton.ConnectClicked(a.onFlashButtonClicked)
 
 	a.resetButton = widgets.NewQPushButton2("Reset", nil)
 	a.resetButton.ConnectClicked(a.onResetButtonClicked)
-
-	a.console = widgets.NewQPlainTextEdit(nil )
-	a.console.SetReadOnly(true)
-	textFont := gui.NewQFont2("monospace", -1, -1, false)
-	a.console.SetFont(textFont)
 
 	hexLayout := widgets.NewQHBoxLayout()
 	hexLayout.AddWidget(a.hexFilePath, 1, 0)
