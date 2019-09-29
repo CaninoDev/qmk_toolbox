@@ -2,20 +2,13 @@ package main
 
 import (
 	"fmt"
-	"log"
-	"net/http"
-	"time"
-
-	"github.com/google/go-github/github"
 	"github.com/therecipe/qt/core"
 	"github.com/therecipe/qt/gui"
 	"github.com/therecipe/qt/widgets"
+	"log"
 )
 
-type App struct {
-	app *widgets.QApplication
-	window *widgets.QMainWindow
-
+type GUI struct {
 	hexGroup *widgets.QGroupBox
 	hexFilePath *widgets.QLineEdit
 	hexLoadButton *widgets.QPushButton
@@ -30,116 +23,97 @@ type App struct {
 	resetButton *widgets.QPushButton
 
 	console *widgets.QTextEdit
-
-	apiClient *http.Client
-	githubClient github.Client
-
 }
 
-func NewApp(qt *widgets.QApplication) *App {
-	app := App{app: qt}
-	return &app
-}
+func NewGUIWidget() (guiWidget *widgets.QWidget) {
+	g := &GUI{}
+	g.hexFilePath = widgets.NewQLineEdit(nil)
+	g.hexFilePath.SetReadOnly(true)
 
-func (a *App) Run() {
-	a.apiClient = &http.Client{
-		Timeout: time.Second * 2,
-	}
+	g.hexLoadButton = widgets.NewQPushButton2("Load...", nil)
+	g.hexLoadButton.ConnectClicked(g.onHexLoadButtonClicked)
 
-	a.githubClient = *github.NewClient(a.apiClient)
+	g.mcuSelector = widgets.NewQComboBox(nil)
 
-	a.window = widgets.NewQMainWindow(nil, 0)
-	a.window.SetWindowTitle("QMK Toolbox")
+	g.keyboardSelector = widgets.NewQComboBox(nil)
+	g.keyboardSelector.ConnectCurrentTextChanged(g.populateKeyMapSelector)
+	g.populateKeyboardSelector()
 
-	a.hexFilePath = widgets.NewQLineEdit(nil)
-	a.hexFilePath.SetReadOnly(true)
+	g.keymapSelector = widgets.NewQComboBox(nil)
 
-	a.hexLoadButton = widgets.NewQPushButton2("Load...", nil)
-	a.hexLoadButton.ConnectClicked(a.onHexLoadButtonClicked)
+	g.keymapLoadButton = widgets.NewQPushButton2("Load...", nil)
+	g.keymapLoadButton.ConnectClicked(g.onKeyMapLoadButtonClicked)
 
-	a.mcuSelector = widgets.NewQComboBox(nil)
-
-	a.keyboardSelector = widgets.NewQComboBox(nil)
-	a.keyboardSelector.ConnectCurrentTextChanged(a.populateKeyMapSelector)
-	a.populateKeyboardSelector()
-
-	a.keymapSelector = widgets.NewQComboBox(nil)
-
-	a.keymapLoadButton = widgets.NewQPushButton2("Load...", nil)
-	a.keymapLoadButton.ConnectClicked(a.onKeyMapLoadButtonClicked)
-
-	a.console = widgets.NewQTextEdit2("console", nil)
-	a.console.SetReadOnly(true)
-	a.console.SetReadOnly(true)
+	g.console = widgets.NewQTextEdit2("console", nil)
+	g.console.SetReadOnly(true)
+	g.console.SetReadOnly(true)
 	textFont := gui.NewQFont2("monospace", -1, -1, false)
-	a.console.SetFont(textFont)
+	g.console.SetFont(textFont)
 	colorPalette := gui.NewQPalette()
 	colorPalette.SetColor(gui.QPalette__All, gui.QPalette__Base, gui.NewQColor6("black"))
 	colorPalette.SetColor(gui.QPalette__All, gui.QPalette__Text, gui.NewQColor6("white"))
-	a.console.SetPalette(colorPalette)
+	g.console.SetPalette(colorPalette)
 
-	a.flashButton = widgets.NewQPushButton2("Flash", nil)
-	a.flashButton.ConnectClicked(a.onFlashButtonClicked)
+	g.flashButton = widgets.NewQPushButton2("Flash", nil)
+	g.flashButton.ConnectClicked(g.onFlashButtonClicked)
 
-	a.resetButton = widgets.NewQPushButton2("Reset", nil)
-	a.resetButton.ConnectClicked(a.onResetButtonClicked)
+	g.resetButton = widgets.NewQPushButton2("Reset", nil)
+	g.resetButton.ConnectClicked(g.onResetButtonClicked)
 
 	hexLayout := widgets.NewQHBoxLayout()
-	hexLayout.AddWidget(a.hexFilePath, 1, 0)
-	hexLayout.AddWidget(a.hexLoadButton, 1,0)
-	hexLayout.AddWidget(a.mcuSelector, 1,0)
+	hexLayout.AddWidget(g.hexFilePath, 1, 0)
+	hexLayout.AddWidget(g.hexLoadButton, 1,0)
+	hexLayout.AddWidget(g.mcuSelector, 1,0)
 
 	configLayout := widgets.NewQHBoxLayout()
-	configLayout.AddWidget(a.keyboardSelector, 1, 0)
-	configLayout.AddWidget(a.keymapSelector, 1, 0)
-	configLayout.AddWidget(a.keymapLoadButton, 1,0)
+	configLayout.AddWidget(g.keyboardSelector, 1, 0)
+	configLayout.AddWidget(g.keymapSelector, 1, 0)
+	configLayout.AddWidget(g.keymapLoadButton, 1,0)
 
 	consoleLayout := widgets.NewQHBoxLayout()
-	consoleLayout.AddWidget(a.console, 1,0)
+	consoleLayout.AddWidget(g.console, 1,0)
 
 	masterLayout := widgets.NewQVBoxLayout()
 	masterLayout.AddLayout(hexLayout, 1)
 	masterLayout.AddLayout(configLayout, 1)
 	masterLayout.AddLayout(consoleLayout, 1)
 
-	centralWidget := widgets.NewQWidget(a.window, 0)
-	centralWidget.SetLayout(masterLayout)
-	a.window.SetCentralWidget(centralWidget)
+	guiWidget = widgets.NewQWidget(MainWindow, 0)
+	guiWidget.SetLayout(masterLayout)
 
-	a.window.Show()
-	a.app.Exec()
+	return guiWidget
 }
 
-func (a *App) onHexLoadButtonClicked(checked bool) {
+func (g *GUI) onHexLoadButtonClicked(checked bool) {
 	hexFileDialog := widgets.NewQFileDialog(nil, core.Qt__Dialog)
 	hexFileDialog.SetFileMode(widgets.QFileDialog__ExistingFile)
 	hexFileDialog.SetNameFilter("Hex (*.hex)")
 	hexFileDialog.ConnectFileSelected(func(file string) {
 		fmt.Println(file)
-		a.hexFilePath.SetText(file)
+		g.hexFilePath.SetText(file)
 	})
 	hexFileDialog.ShowDefault()
 }
 
-func (a *App) populateKeyboardSelector() {
-	keyboardList := GetKeyBoardList(a.apiClient)
-	a.keyboardSelector.AddItems(keyboardList)
+func (g *GUI) populateKeyboardSelector() {
+	keyboardList := GetKeyBoardList()
+	g.keyboardSelector.AddItems(keyboardList)
 }
 
-func (a *App) populateKeyMapSelector(keyboard string) {
-	keymapList := GetKeyMapList(&a.githubClient, keyboard)
-	a.keymapSelector.Clear()
-	a.keymapSelector.AddItems(keymapList)
+func (g *GUI) populateKeyMapSelector(keyboard string) {
+	keymapList := GetKeyMapList(keyboard)
+	g.keymapSelector.Clear()
+	g.keymapSelector.AddItems(keymapList)
 }
 
 
-func (a *App) onKeyMapLoadButtonClicked(checked bool) {
+func (g *GUI) onKeyMapLoadButtonClicked(checked bool) {
 	log.Print("button clicked")
 }
-func (a *App) onFlashButtonClicked(checked bool) {
+func (g *GUI) onFlashButtonClicked(checked bool) {
 	log.Print("button clicked")
 }
-func (a *App) onResetButtonClicked(checked bool) {
+func (g *GUI) onResetButtonClicked(checked bool) {
 	log.Print("button clicked")
 }
 

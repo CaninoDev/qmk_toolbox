@@ -9,11 +9,18 @@ import (
 	"net/http"
 	"net/url"
 	"path"
+	"time"
 
 	"github.com/google/go-github/github"
 )
 
-func GetKeyBoardList(client *http.Client) []string {
+var httpClient = &http.Client{
+	Timeout: time.Second * 2,
+}
+
+var githubClient = github.NewClient(httpClient)
+
+func GetKeyBoardList() []string {
 	url := "http://compile.qmk.fm/v1/keyboards"
 	var rawJSON json.RawMessage
 	var keyboardList []string
@@ -23,7 +30,7 @@ func GetKeyBoardList(client *http.Client) []string {
 		log.Print(err)
 	}
 
-	res, err := client.Do(req)
+	res, err := httpClient.Do(req)
 	if err != nil {
 		log.Fatalf("The HTTP request failed with error %s\n", err)
 	}
@@ -39,7 +46,7 @@ func GetKeyBoardList(client *http.Client) []string {
 	return keyboardList
 }
 
-func GetKeyMapList(client *github.Client, kbPath string) (keyMapList []string) {
+func GetKeyMapList(kbPath string) (keyMapList []string) {
 	ctx := context.Background()
 	owner := "qmk"
 	repo := "qmk_firmware"
@@ -51,23 +58,24 @@ func GetKeyMapList(client *github.Client, kbPath string) (keyMapList []string) {
 
 	log.Printf("before: %s", kbPath)
 
-	_, directoryContents, _, err := client.Repositories.GetContents(ctx, owner, repo, keyMapPath, nil)
+	_, directoryContents, _, err := githubClient.Repositories.GetContents(ctx, owner, repo, keyMapPath, nil)
 	if err == nil {
-		for _, entry := range directoryContents {
-			if entry.GetType() == "dir" {
-				keyMapList = append(keyMapList, entry.GetName())
-			}
-		}
+		keyMapList = _getKeymaps(directoryContents)
 	} else {
-		log.Print("we have here an error")
-		escapedString =  (&url.URL{Path: (path.Dir(escapedString))}).String()
+		// for the outlier case where the keymap is kept in the parent directory
+		escapedString = (&url.URL{Path: (path.Dir(escapedString))}).String()
 		keyMapPath = fmt.Sprintf("keyboards/%s/keymaps", escapedString)
-		_, directoryContents, _, _ := client.Repositories.GetContents(ctx, owner, repo, keyMapPath, nil)
-		for _, entry := range directoryContents {
-			log.Print(entry)
-			if entry.GetType() == "dir" {
-				keyMapList = append(keyMapList, entry.GetName())
-			}
+		_, directoryContents, _, _ = githubClient.Repositories.GetContents(ctx, owner, repo, keyMapPath, nil)
+		keyMapList = _getKeymaps(directoryContents)
+	}
+
+	return keyMapList
+}
+
+func _getKeymaps(directoryContents []*github.RepositoryContent) (keyMapList []string) {
+	for _, entry := range directoryContents {
+		if entry.GetType() == "dir" {
+			keyMapList = append(keyMapList, entry.GetName())
 		}
 	}
 	return keyMapList
