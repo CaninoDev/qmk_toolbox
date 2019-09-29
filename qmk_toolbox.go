@@ -29,7 +29,7 @@ type App struct {
 	flashButton *widgets.QPushButton
 	resetButton *widgets.QPushButton
 
-	console *widgets.QTextEdit
+	console *widgets.QPlainTextEdit
 
 	apiClient *http.Client
 	githubClient github.Client
@@ -51,54 +51,61 @@ func (a *App) Run() {
 	a.window = widgets.NewQMainWindow(nil, 0)
 	a.window.SetWindowTitle("QMK Toolbox")
 
-	a.hexGroup = widgets.NewQGroupBox(a.window)
-	a.hexFilePath = widgets.NewQLineEdit(a.hexGroup)
+	a.hexFilePath = widgets.NewQLineEdit(nil)
 	a.hexFilePath.SetReadOnly(true)
 
-	a.hexLoadButton = widgets.NewQPushButton2("Load .hex file", a.hexGroup)
+	a.hexLoadButton = widgets.NewQPushButton2("Load...", nil)
 	a.hexLoadButton.ConnectClicked(a.onHexLoadButtonClicked)
 
-	a.mcuSelector = widgets.NewQComboBox(a.hexGroup)
+	a.mcuSelector = widgets.NewQComboBox(nil)
 
-	a.configGroup = widgets.NewQGroupBox(a.window)
-	a.keyboardSelector = widgets.NewQComboBox(a.configGroup)
+	a.keyboardSelector = widgets.NewQComboBox(nil)
 	a.keyboardSelector.ConnectCurrentTextChanged(a.populateKeyMapSelector)
 	a.populateKeyboardSelector()
 
-	a.keymapSelector = widgets.NewQComboBox(a.configGroup)
+	a.keymapSelector = widgets.NewQComboBox(nil)
 
-	a.keymapLoadButton = widgets.NewQPushButton(a.configGroup)
+	a.keymapLoadButton = widgets.NewQPushButton2("Load...", nil)
 	a.keymapLoadButton.ConnectClicked(a.onKeyMapLoadButtonClicked)
 
-	a.console = widgets.NewQTextEdit(a.window)
+	a.console = widgets.NewQPlainTextEdit(nil)
 	a.console.SetReadOnly(true)
 
-	a.flashButton = widgets.NewQPushButton2("Flash", a.window)
+	a.flashButton = widgets.NewQPushButton2("Flash", nil)
 	a.flashButton.ConnectClicked(a.onFlashButtonClicked)
 
-	a.resetButton = widgets.NewQPushButton2("Reset", a.window)
+	a.resetButton = widgets.NewQPushButton2("Reset", nil)
 	a.resetButton.ConnectClicked(a.onResetButtonClicked)
 
-	hexLayout := widgets.NewQGridLayout2()
-	hexLayout.AddWidget3(a.hexFilePath, 0, 0,  1, 1, core.Qt__AlignCenter)
-	hexLayout.AddWidget3(a.hexLoadButton, 0,1, 1, 1, core.Qt__AlignCenter)
-	hexLayout.AddWidget3(a.mcuSelector, 0, 2, 1, 1, core.Qt__AlignCenter)
-	a.hexGroup.SetLayout(hexLayout)
-
-	configLayout := widgets.NewQGridLayout2()
-	configLayout.AddWidget3(a.keyboardSelector, 0, 0, 1, 1, core.Qt__AlignCenter)
-	configLayout.AddWidget3(a.keymapSelector, 0, 1, 1, 1, core.Qt__AlignCenter)
-	configLayout.AddWidget3(a.keymapLoadButton, 0, 	2, 1,1, core.Qt__AlignCenter)
-	a.configGroup.SetLayout(configLayout)
-
-	a.console = widgets.NewQTextEdit(a.window)
+	a.console = widgets.NewQPlainTextEdit(nil )
 	a.console.SetReadOnly(true)
 	textFont := gui.NewQFont2("monospace", -1, -1, false)
 	a.console.SetFont(textFont)
 
-	masterLayout := widgets.NewQGridLayout(a.window)
-	masterLayout.AddWidget3(a.hexGroup, 0, 0, 1, 1, core.Qt__AlignCenter)
-	masterLayout.AddWidget3(a.configGroup, )
+	hexLayout := widgets.NewQHBoxLayout()
+	hexLayout.AddWidget(a.hexFilePath, 1, 0)
+	hexLayout.AddWidget(a.hexLoadButton, 1,0)
+	hexLayout.AddWidget(a.mcuSelector, 1,0)
+
+	configLayout := widgets.NewQHBoxLayout()
+	configLayout.AddWidget(a.keyboardSelector, 1, 0)
+	configLayout.AddWidget(a.keymapSelector, 1, 0)
+	configLayout.AddWidget(a.keymapLoadButton, 1,0)
+
+	consoleLayout := widgets.NewQHBoxLayout()
+	consoleLayout.AddWidget(a.console, 1,0)
+
+	masterLayout := widgets.NewQVBoxLayout()
+	masterLayout.AddLayout(hexLayout, 1)
+	masterLayout.AddLayout(configLayout, 1)
+	masterLayout.AddLayout(consoleLayout, 1)
+
+	centralWidget := widgets.NewQWidget(a.window, 0)
+	centralWidget.SetLayout(masterLayout)
+	a.window.SetCentralWidget(centralWidget)
+
+	a.window.Show()
+	a.app.Exec()
 }
 
 func (a *App) onHexLoadButtonClicked(checked bool) {

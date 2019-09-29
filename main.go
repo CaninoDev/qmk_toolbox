@@ -19,5 +19,4 @@ func main() {
 	app := NewApp(qt)
 
 	app.Run()
-	app.window.Show()
 }
