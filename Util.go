@@ -25,15 +25,15 @@ func GetKeyBoardList(client *http.Client) []string {
 
 	res, err := client.Do(req)
 	if err != nil {
-		fmt.Printf("The HTTP request failed with error %s\n", err)
+		log.Fatalf("The HTTP request failed with error %s\n", err)
 	}
 	rawJSON, err = ioutil.ReadAll(res.Body)
 	if err != nil {
-		log.Printf("The JSON could not be parsed with error: %s", err)
+		log.Fatalf("The JSON could not be parsed with error: %s", err)
 	}
 	err = json.Unmarshal(rawJSON, &keyboardList)
 	if err != nil {
-		log.Printf("The JSON could not be parsed with error: %s", err)
+		log.Fatalf("The JSON could not be parsed with error: %s", err)
 	}
 
 	return keyboardList
