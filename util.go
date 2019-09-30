@@ -65,10 +65,17 @@ func GetKeyMapList(kbPath string) (keyMapList []string) {
 		// for the outlier case where the keymap is kept in the parent directory
 		escapedString = (&url.URL{Path: (path.Dir(escapedString))}).String()
 		keyMapPath = fmt.Sprintf("keyboards/%s/keymaps", escapedString)
-		_, directoryContents, _, _ = githubClient.Repositories.GetContents(ctx, owner, repo, keyMapPath, nil)
-		keyMapList = _getKeymaps(directoryContents)
+		_, directoryContents, _, secondErr := githubClient.Repositories.GetContents(ctx, owner, repo, keyMapPath, nil)
+		if secondErr == nil {
+			keyMapList = _getKeymaps(directoryContents)
+		} else {
+			for _, subEntry := range directoryContents {
+				keyMapPath = fmt.Sprintf("keyboards/%s/%s/keymaps", escapedString, subEntry.GetName())
+				_, directoryContents, _, _ = githubClient.Repositories.GetContents(ctx, owner, repo, keyMapPath, nil)
+				keyMapList = _getKeymaps(directoryContents)
+			}
+		}
 	}
-
 	return keyMapList
 }
 
