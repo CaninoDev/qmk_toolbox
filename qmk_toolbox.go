@@ -1,11 +1,13 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"github.com/therecipe/qt/core"
 	"github.com/therecipe/qt/gui"
 	"github.com/therecipe/qt/widgets"
 	"log"
+	"os/exec"
 )
 
 type GUI struct {
@@ -42,7 +44,7 @@ func NewGUIWidget() (guiWidget *widgets.QWidget) {
 	g.keymapSelector = widgets.NewQComboBox(nil)
 
 	g.keymapLoadButton = widgets.NewQPushButton2("Load...", nil)
-	g.keymapLoadButton.ConnectClicked(g.onKeyMapLoadButtonClicked)
+	g.keymapLoadButton.ConnectClicked(g.onFlashButtonClicked)
 
 	g.console = widgets.NewQTextEdit2("console", nil)
 	g.console.SetReadOnly(true)
@@ -111,12 +113,28 @@ func (g *GUI) onKeyMapLoadButtonClicked(checked bool) {
 	log.Print("button clicked")
 }
 func (g *GUI) onFlashButtonClicked(checked bool) {
-	log.Print("button clicked")
+	output := run("/usr/bin/bat")
+	go func() {
+		g.console.Append(output)
+	}()
 }
+
 func (g *GUI) onResetButtonClicked(checked bool) {
 	log.Print("button clicked")
 }
 
+func run(command string) string {
+	cmd := exec.Command(command, "/home/caninodev/Developments/Go/src/github.com/caninodev/qmk_toolbox/sample.txt")
+	var b bytes.Buffer
+	cmd.Stdout = &b
+
+	err := cmd.Run()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	return b.String()
+}
 //
 //func createHexGroup(widget *widgets.QWidget) {
 //	// hexLoaderGrouping component
