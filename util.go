@@ -78,21 +78,6 @@ func GetKeyMapList(kbPath string) (keyMapList []string) {
 	}
 	return keyMapList
 }
-// Sample code for streaming output from console to qtextedit
-/*
-    stream := run(input.Text())
-            go func() {
-                    for line := range stream {
-                            output.Append(line)
-                    }
-            }()
-    })
-
-    // ...
-}
-
-z*/
-
 
 func _getKeymaps(directoryContents []*github.RepositoryContent) (keyMapList []string) {
 	for _, entry := range directoryContents {
