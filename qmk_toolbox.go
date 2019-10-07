@@ -17,6 +17,10 @@ type GUI struct {
 	keyboardSelector *widgets.QComboBox
 	keymapSelector   *widgets.QComboBox
 	keymapLoadButton *widgets.QPushButton
+	dfuCheckBox		 *widgets.QCheckBox
+	stm32CheckBox	 *widgets.QCheckBox
+	halfkayCheckBox  *widgets.QCheckBox
+	caterinaCheckBox *widgets.QCheckBox
 	flashButton      *widgets.QPushButton
 	resetButton      *widgets.QPushButton
 	console          *widgets.QTextEdit
@@ -24,6 +28,7 @@ type GUI struct {
 
 func NewGUIWidget() (guiWidget *widgets.QWidget) {
 	g := &GUI{}
+
 	g.hexFilePath = widgets.NewQLineEdit(nil)
 	g.hexFilePath.SetReadOnly(true)
 
@@ -41,7 +46,7 @@ func NewGUIWidget() (guiWidget *widgets.QWidget) {
 	g.keymapLoadButton = widgets.NewQPushButton2("Load...", nil)
 	g.keymapLoadButton.ConnectClicked(g.onFlashButtonClicked)
 
-	g.console = widgets.NewQTextEdit2("console", nil)
+	g.console = widgets.NewQTextEdit2("", nil)
 	g.console.SetReadOnly(true)
 	g.console.SetReadOnly(true)
 	textFont := gui.NewQFont2("monospace", -1, -1, false)
@@ -57,24 +62,58 @@ func NewGUIWidget() (guiWidget *widgets.QWidget) {
 	g.resetButton = widgets.NewQPushButton2("Reset", nil)
 	g.resetButton.ConnectClicked(g.onResetButtonClicked)
 
+	g.dfuCheckBox = widgets.NewQCheckBox2("DFU", nil)
+	g.stm32CheckBox = widgets.NewQCheckBox2("STM32", nil)
+	g.halfkayCheckBox = widgets.NewQCheckBox2("Halfkay", nil)
+	g.caterinaCheckBox = widgets.NewQCheckBox2("Caterina", nil)
+
+	flasherGridLayout := widgets.NewQGridLayout2()
+	flasherGridLayout.AddWidget3(g.dfuCheckBox, 0, 0,1, 1, core.Qt__AlignCenter)
+	flasherGridLayout.AddWidget3(g.stm32CheckBox, 1, 0,1,1, core.Qt__AlignCenter)
+	flasherGridLayout.AddWidget3(g.halfkayCheckBox, 0, 1, 1,1 ,core.Qt__AlignCenter)
+	flasherGridLayout.AddWidget3(g.caterinaCheckBox, 1,1, 1, 1, core.Qt__AlignCenter)
+
+	flasherGroupBox := widgets.NewQGroupBox(nil)
+	flasherGroupBox.SetFlat(false)
+	flasherGroupBox.SetTitle("MCUs")
+	flasherGroupBox.SetAlignment(1)
+	flasherGroupBox.SetLayout(flasherGridLayout)
+
 	hexLayout := widgets.NewQHBoxLayout()
 	hexLayout.AddWidget(g.hexFilePath, 1, 0)
 	hexLayout.AddWidget(g.hexLoadButton, 1, 0)
 	hexLayout.AddWidget(g.mcuSelector, 1, 0)
+
+	hexGroupBox := widgets.NewQGroupBox(nil)
+	hexGroupBox.SetTitle("Load File...")
+	hexGroupBox.SetAlignment(1)
+	hexGroupBox.SetLayout(hexLayout)
 
 	configLayout := widgets.NewQHBoxLayout()
 	configLayout.AddWidget(g.keyboardSelector, 1, 0)
 	configLayout.AddWidget(g.keymapSelector, 1, 0)
 	configLayout.AddWidget(g.keymapLoadButton, 1, 0)
 
+	configGroupBox := widgets.NewQGroupBox(nil)
+	configGroupBox.SetTitle("Keyboard from qmk.fm")
+	configGroupBox.SetAlignment(1)
+	configGroupBox.SetLayout(configLayout)
+
 	consoleLayout := widgets.NewQHBoxLayout()
 	consoleLayout.AddWidget(g.console, 1, 0)
 
-	masterLayout := widgets.NewQVBoxLayout()
-	masterLayout.AddLayout(hexLayout, 1)
-	masterLayout.AddLayout(configLayout, 1)
-	masterLayout.AddLayout(consoleLayout, 1)
+	consoleGroupBox := widgets.NewQGroupBox(nil)
+	consoleGroupBox.SetTitle("Console")
+	consoleGroupBox.SetAlignment(1)
+	consoleGroupBox.SetLayout(consoleLayout)
 
+	masterLayout := widgets.NewQVBoxLayout()
+	masterLayout.AddWidget(hexGroupBox, 1, core.Qt__AlignCenter)
+	masterLayout.AddWidget(configGroupBox, 1, core.Qt__AlignCenter)
+	masterLayout.AddWidget(consoleGroupBox, 1, core.Qt__AlignCenter)
+	masterLayout.AddWidget(hexGroupBox, 1, core.Qt__AlignCenter)
+	masterLayout.AddWidget(flasherGroupBox, 1, core.Qt__AlignCenter)
+	
 	guiWidget = widgets.NewQWidget(MainWindow, 0)
 	guiWidget.SetLayout(masterLayout)
 
@@ -110,7 +149,6 @@ func (g *GUI) onKeyMapLoadButtonClicked(checked bool) {
 func (g *GUI) onFlashButtonClicked(checked bool) {
 	cmd := core.NewQProcess(nil)
 	cmd.ConnectReadyRead(func() {
-		log.Print("here")
 		var stdOutput *core.QByteArray
 		stdOutput = cmd.ReadAllStandardOutput()
 		g.console.InsertPlainText(stdOutput.Data())
